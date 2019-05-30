@@ -15,6 +15,7 @@ library(plotrix)
 library(boot)
 library(lubridate)
 ```
+
 Hi there! What follows is a written out methodology for *Injustice Watch's* sentencing analysis for Criminal Division judges. All work was done in R. This file will construct a 95% confidence interval around Judge Maura Slattery Boyle's sentencing patterns using Bootstrap resampling. Since our population's sentencing patterns aren't included in that interval we can conclude that Judge Slattery Boyle's harsh sentencing is statistically significant.
 
 While this analysis was done on Judge Slattery Boyle, it can be replicated on any judge, by subsetting by a different sentence judge under our significance tests section.
@@ -63,6 +64,15 @@ conversion_table2 <- revalue(original_subset$SENTENCE_TYPE, c("Prison"=TRUE, "Ja
 original_subset["PJ"]=conversion_table2
 above_median <- (original_subset$PJ==TRUE & ((original_subset$CLASS=="1" & original_subset$converted_sentence>median_1) | (original_subset$CLASS=="2" & original_subset$converted_sentence>median_2) | (original_subset$CLASS=="3" & original_subset$converted_sentence>median_3) | (original_subset$CLASS=="4" & original_subset$converted_sentence>median_4) | (original_subset$CLASS=="X" & original_subset$converted_sentence>median_X)))
 original_subset["above_median"] <- above_median
+original_subset<-subset(original_subset, original_subset$SENTENCE_TYPE=="Prison"|original_subset$SENTENCE_TYPE=="Jail"|original_subset$SENTENCE_TYPE=="Probation")
+original_subset$counter<-1
+original_subset$counter_PJ<-ifelse(original_subset$SENTENCE_TYPE=="Prison" | original_subset$SENTENCE_TYPE=="Jail", 1, 0)
+original_subset$counter_abovemedian<-ifelse(original_subset$above_median==TRUE & original_subset$counter_PJ==1, 1, 0)
+original_subset$counter_F1 <-ifelse(original_subset$CLASS==1, 1, 0)
+original_subset$counter_F2 <-ifelse(original_subset$CLASS==2, 1, 0)
+original_subset$counter_F3 <-ifelse(original_subset$CLASS==3, 1, 0)
+original_subset$counter_F4 <-ifelse(original_subset$CLASS==4, 1, 0)
+original_subset$counter_F4_pj <-ifelse(original_subset$CLASS==4 & original_subset$SENTENCE_TYPE!="Probation", 1, 0)
 ```
 
 #Significance Tests for Slattery Boyle 
