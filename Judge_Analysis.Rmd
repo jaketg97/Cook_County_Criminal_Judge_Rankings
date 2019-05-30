@@ -9,22 +9,100 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+library(readr)
+library(formatR)
+library(plyr)
+library(plotrix)
+library(boot)
+```
+Hi there! What follows is a written out methodology for *Injustice Watch's* sentencing analysis for Criminal Division judges. All work was done in R. This file will construct a 95% confidence interval around Judge Maura Slattery Boyle's sentencing patterns using Bootstrap resampling. Since our population's sentencing patterns aren't included in that interval we can conclude that Judge Slattery Boyle's harsh sentencing is statistically significant.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+While this analysis was done on Judge Slattery Boyle, it can be replicated on any judge, by subsetting by a different sentence judge under our significance tests section.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Reading in Data/Converting Sentence Term
 
-```{r cars}
-summary(cars)
+We'll start by reading in our original sentencing data (from https://datacatalog.cookcountyil.gov/Courts/Sentencing/tg8v-tm6u). We'll then create a conversion table to standardize our units (i.e. years=1, months=1/12, weeks=1/52, days=1/365, all other units are left undefined but the rows are kept). We'll then convert our sentence (i.e. 6 months=.5), and store it under a new variable, "converted_sentence".
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+original <- read_csv("https://datacatalog.cookcountyil.gov/api/views/tg8v-tm6u/rows.csv?accessType=DOWNLOAD")
+conversion_table <- revalue(original$COMMITMENT_UNIT, c("Year(s)"=1, "Months"=1/12, "Weeks"=1/52, "Days"=1/365, "Pounds"=NA, "Dollars"=NA, "Term"=NA))
+conversion_table <- as.double(conversion_table)
+original["converted_sentence"]<-ifelse(original$COMMITMENT_UNIT=="Natural Life", 100,conversion_table*as.double(original$COMMITMENT_TERM))
+original["sentence_date"]<-as.Date(original$SENTENCE_DATE, "%m/%d/%Y")
+original["sentence_year"]<-year(original$sentence_date)
 ```
 
-## Including Plots
+#Creating relevant subsets
 
-You can also embed plots, for example:
+We'll now create a series of subsets, to find median sentences. We're going to create a subset for class 1, 2, 3, 4, and X felonies. This will exclude 2792 cases, which are filed under class A, B, C, M, O, P, U, or Z felonies. A lot of these are mistaken filings, but we don't want to assign them. Since the sample size is large, we're better of ignoring them (they only make up <2% of cases). 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+We're also going to create further subsets (PJ) for sentences to Prison or Jail. We'll use these to find median sentences; while it eliminates a good chunk of our cases (~41%), you have to do this to get an accurate read on median sentence time. Otherwise, a two year probation will skew our median, since that will be considered harsher than a one year prison sentence. 
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+CLASS_1 <- subset(original, CLASS=="1")
+CLASS_2 <- subset(original, CLASS=="2")
+CLASS_3 <- subset(original, CLASS=="3")
+CLASS_4 <- subset(original, CLASS=="4")
+CLASS_X <- subset(original, CLASS=="X") 
+CLASS_1_PJ <- subset(original, CLASS=="1" & (SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail"))
+CLASS_2_PJ <- subset(original, CLASS=="2" & (SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail"))
+CLASS_3_PJ <- subset(original, CLASS=="3" & (SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail"))
+CLASS_4_PJ <- subset(original, CLASS=="4" & (SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail"))
+CLASS_X_PJ <- subset(original, CLASS=="X" & (SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail"))
+original_PJ <- subset(original, SENTENCE_TYPE=="Prison" | SENTENCE_TYPE=="Jail")
+median_1 <- median(CLASS_1_PJ$converted_sentence, na.rm=TRUE)
+median_2 <- median(CLASS_2_PJ$converted_sentence, na.rm=TRUE)
+median_3 <- median(CLASS_3_PJ$converted_sentence, na.rm=TRUE)
+median_4 <- median(CLASS_4_PJ$converted_sentence, na.rm=TRUE)
+median_X <- median(CLASS_X_PJ$converted_sentence, na.rm=TRUE)
+```
+The outputs are our median prison sentences by felony class.
+
+#Significance Tests for Slattery Boyle 
+First we'll check if Slattery Boyle's sentencing patterns show statistical significance with the above median measure.
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+boyle_PJ <- subset(original_subset, original_subset$counter_PJ==1 & original_subset$SENTENCE_JUDGE=="Maura  Slattery Boyle")
+boyle_PJ_2 <- c(boyle_PJ["CLASS"], boyle_PJ["converted_sentence"])
+boyle_PJ_2 <- data.frame(boyle_PJ_2)
+f_abovemedian <- function(data, indices) {
+    sample1 <- data[indices, ]
+    sum(sample1$CLASS == "1" & sample1$converted_sentence > median_1 | 
+        sample1$CLASS == "2" & sample1$converted_sentence > median_2 | 
+        sample1$CLASS == "3" & sample1$converted_sentence > median_3 | 
+        sample1$CLASS == "4" & sample1$converted_sentence > median_4 | 
+        sample1$CLASS == "X" & sample1$converted_sentence > median_X, 
+        na.rm = TRUE)/sum(sample1$CLASS == "1" | sample1$CLASS == 
+        "2" | sample1$CLASS == "3" | sample1$CLASS == "4" | sample1$CLASS == 
+        "X", na.rm = TRUE)
+}
+boyle_PJ_boot <- boot(boyle_PJ_2, f_abovemedian, R = 6000)
+boot.ci(boyle_PJ_boot)
+sum(original_subset$counter_abovemedian, na.rm=TRUE)/sum(original_subset$counter_PJ, na.rm=TRUE)
+```
+Our output is the bootstrap confidence interval for Judge Slattery Boyle's percent of sentences above the median, followed by the average sentences above the median of the overall population. 
+
+Then we'll do the same thing for the class 4 prison percent measure. 
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+boyle_class4 <- subset(original_subset, original_subset$CLASS==4 & original_subset$SENTENCE_JUDGE=="Maura  Slattery Boyle")
+f_prisonpercent <- function(data, indices) {
+    sample1 <- data[indices, ]
+    sum(sample1$counter_F4_pj == 1, na.rm=TRUE)/sum(sample1$counter_F4, na.rm=TRUE)
+}
+boyle_PJ_boot <- boot(boyle_class4, f_prisonpercent, R = 6000)
+plot(boyle_PJ_boot)
+boot.ci(boyle_PJ_boot)
+sum(original_subset$counter_F4_pj, na.rm=TRUE)/sum(original_subset$counter_F4, na.rm=TRUE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Again, our output is a confidence interval for Judge Slattery Boyle's percent of sentences resulting in prison time for class 4 felonies, followed by the average percent of class 4 felony sentences resulting in prison time.
+
+In both cases, the 95% confidence interval constructed from Judge Slattery Boyle's subset of sentences does not include the actual value of our population (not even close). In other words, Judge Slattery Boyle's severe sentencing practices are statistically significant at 5% (also at 1%). 
+
+As said at the top, this method can be applied to any Judge, by subsetting appropriately.
+
+#Closing Thoughts 
+In conclusion, it's worth mentioning here that just because a judge seems to sentence more harshly than his or her colleagues (i.e. their severity metric is above the overall average), that does not mean that judge is necessarily more severe. While cases are assigned randomly, further statistical testing is necessary to establish whether such a disparity is significant. In the case of Judge Slattery Boyle, the disparity is statistically significant, as shown by the bootstrap confidence intervals. 
+
+That's it! As previously mentioned, all code used is available, so please expand upon our work.
