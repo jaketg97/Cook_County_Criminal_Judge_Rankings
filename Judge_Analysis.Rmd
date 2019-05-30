@@ -57,8 +57,17 @@ median_X <- median(CLASS_X_PJ$converted_sentence, na.rm=TRUE)
 ```
 The outputs are our median prison sentences by felony class.
 
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+original_subset <- subset(original, CLASS=="1" | CLASS=="2" | CLASS=="3" | CLASS=="4" | CLASS=="X")
+conversion_table2 <- revalue(original_subset$SENTENCE_TYPE, c("Prison"=TRUE, "Jail"=TRUE))
+original_subset["PJ"]=conversion_table2
+above_median <- (original_subset$PJ==TRUE & ((original_subset$CLASS=="1" & original_subset$converted_sentence>median_1) | (original_subset$CLASS=="2" & original_subset$converted_sentence>median_2) | (original_subset$CLASS=="3" & original_subset$converted_sentence>median_3) | (original_subset$CLASS=="4" & original_subset$converted_sentence>median_4) | (original_subset$CLASS=="X" & original_subset$converted_sentence>median_X)))
+original_subset["above_median"] <- above_median
+```
+
 #Significance Tests for Slattery Boyle 
 First we'll check if Slattery Boyle's sentencing patterns show statistical significance with the above median measure.
+
 ```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 boyle_PJ <- subset(original_subset, original_subset$counter_PJ==1 & original_subset$SENTENCE_JUDGE=="Maura  Slattery Boyle")
 boyle_PJ_2 <- c(boyle_PJ["CLASS"], boyle_PJ["converted_sentence"])
@@ -78,6 +87,7 @@ boyle_PJ_boot <- boot(boyle_PJ_2, f_abovemedian, R = 6000)
 boot.ci(boyle_PJ_boot)
 sum(original_subset$counter_abovemedian, na.rm=TRUE)/sum(original_subset$counter_PJ, na.rm=TRUE)
 ```
+
 Our output is the bootstrap confidence interval for Judge Slattery Boyle's percent of sentences above the median, followed by the average sentences above the median of the overall population. 
 
 Then we'll do the same thing for the class 4 prison percent measure. 
