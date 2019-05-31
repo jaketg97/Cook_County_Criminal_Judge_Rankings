@@ -108,7 +108,6 @@ f_prisonpercent <- function(data, indices) {
     sum(sample1$counter_F4_pj == 1, na.rm=TRUE)/sum(sample1$counter_F4, na.rm=TRUE)
 }
 boyle_PJ_boot <- boot(boyle_class4, f_prisonpercent, R = 6000)
-plot(boyle_PJ_boot)
 boot.ci(boyle_PJ_boot)
 sum(original_subset$counter_F4_pj, na.rm=TRUE)/sum(original_subset$counter_F4, na.rm=TRUE)
 ```
