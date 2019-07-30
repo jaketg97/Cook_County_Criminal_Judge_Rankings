@@ -1,7 +1,7 @@
 ---
 title: "Cook County Criminal Judge Severity Ranking (Updated)"
 author: "Jacob Gosselin"
-date: "11/9/2018"
+date: "7/29/2019"
 output:
   html_document: default
   word_document: default
@@ -18,7 +18,7 @@ library(plotrix)
 library(boot)
 library(lubridate)
 ```
-Hi there! What follows is a written out methodology for *Injustice Watch's* sentencing analysis on Criminal Division judges. All work was done in R and Stata. The R code and Stata code can be downloaded at our GitHub; since our data is read in from the Cook County Online Data portal, our work can easily be re-created or expanded upon. Thanks!
+Hi there! What follows is a written out methodology for my sentencing analysis on Criminal Division judges. All work was done in R. The R code here, at my GitHub; since the data is read in from the Cook County Online Data portal, our work can easily be re-created or expanded upon. Thanks!
 
 # Reading in Data/Converting Sentence Term
 

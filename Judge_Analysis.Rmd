@@ -1,7 +1,7 @@
 ---
 title: "Judge Analysis"
 author: "Jacob Gosselin"
-date: "5/30/2019"
+date: "7/29/2019"
 output: html_document
 ---
 
@@ -16,7 +16,7 @@ library(boot)
 library(lubridate)
 ```
 
-Hi there! What follows is a written out methodology for *Injustice Watch's* sentencing analysis for Criminal Division judges. All work was done in R. This file will construct a 95% confidence interval around Judge Maura Slattery Boyle's sentencing patterns using Bootstrap resampling. Since our population's sentencing patterns aren't included in that interval we can conclude that Judge Slattery Boyle's harsh sentencing is statistically significant.
+Hi there! What follows is a written out methodology for my sentencing analysis for Criminal Division judges. All work was done in R. This file will construct a 95% confidence interval around Judge Maura Slattery Boyle's sentencing patterns using Bootstrap resampling. Since our population's sentencing patterns aren't included in that interval we can conclude that Judge Slattery Boyle's harsh sentencing is statistically significant.
 
 While this analysis was done on Judge Slattery Boyle, it can be replicated on any judge, by subsetting by a different sentence judge under our significance tests section.
 
