@@ -17,6 +17,8 @@ library(plyr)
 library(plotrix)
 library(boot)
 library(lubridate)
+library(lmtest)
+library(sandwich)
 ```
 Hi there! What follows is a written out methodology for my sentencing analysis on Criminal Division judges. All work was done in R. The R code here, at my GitHub; since the data is read in from the Cook County Online Data portal, our work can easily be re-created or expanded upon. Thanks!
 
@@ -85,8 +87,8 @@ original_subset$counter_F2 <-ifelse(original_subset$DISPOSITION_CHARGED_CLASS==2
 original_subset$counter_F3 <-ifelse(original_subset$DISPOSITION_CHARGED_CLASS==3, 1, 0)
 original_subset$counter_F4 <-ifelse(original_subset$DISPOSITION_CHARGED_CLASS==4, 1, 0)
 original_subset$counter_F4_pj <-ifelse(original_subset$DISPOSITION_CHARGED_CLASS==4 & original_subset$SENTENCE_TYPE!="Probation", 1, 0)
-judge_rankings<-aggregate(original_subset[45:52], by=list(judges=original_subset$SENTENCE_JUDGE), FUN=sum, na.rm=TRUE)
-judge_rankings<-subset(judge_rankings, judge_rankings$counter>=1000)
+judge_rankings<-aggregate(original_subset[47:54], by=list(judges=original_subset$SENTENCE_JUDGE), FUN=sum, na.rm=TRUE)
+judge_rankings<-subset(judge_rankings, judge_rankings$counter>=500)
 judge_rankings$percentabove <- judge_rankings$counter_abovemedian/judge_rankings$counter_PJ
 judge_rankings$class4prisonpercent <- judge_rankings$counter_F4_pj/judge_rankings$counter_F4
 judge_rankings$severity_metric<-(judge_rankings$percentabove+judge_rankings$class4prisonpercent)/2
@@ -96,6 +98,15 @@ judge_rankings_abb<-arrange(judge_rankings_abb, desc(judge_rankings_abb$`Severit
 ```
 
 # Significance Tests for Slattery Boyle 
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+boyle_PJ <- subset(original_subset, original_subset$counter_PJ==1 & original_subset$SENTENCE_JUDGE=="Maura  Slattery Boyle")
+original_subset_PJ <- subset(original_subset, counter_PJ == 1)
+original_subset_PJ$boyle_dummy <- original_subset_PJ$SENTENCE_JUDGE == "Maura  Slattery Boyle"
+original_subset_PJ$sentence_year.f <- factor(original_subset_PJ$sentence_year)
+boyle_mod <- lm(counter_abovemedian ~ boyle_dummy + sentence_date + sentence_year.f, data = original_subset_PJ)
+coeftest(boyle_mod, vcov = vcovHC(boyle_mod, type="HC0"))
+```
 First we'll check if Slattery Boyle's sentencing patterns show statistical significance with the above median measure.
 ```{r, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 boyle_PJ <- subset(original_subset, original_subset$counter_PJ==1 & original_subset$SENTENCE_JUDGE=="Maura  Slattery Boyle")
